@@ -21,10 +21,25 @@ def is_valid(url):
     # Decide whether to crawl this url or not. 
     # If you decide to crawl it, return True; otherwise return False.
     # There are already some conditions that return False.
+    
+    # set list of valid domains to scrape
+    allowed_domains = [".ics.uci.edu", ".cs.uci.edu", ".informatics.uci.edu", ".stat.uci.edu"]
     try:
+        #parse URL
         parsed = urlparse(url)
+        
+        #check for valid protocol
         if parsed.scheme not in set(["http", "https"]):
             return False
+        
+        # Check if the url ends with any of the valid domains
+        if not any(parsed.netloc.endswith(domain) for domain in allowed_domains):
+            return False
+
+        # We are only interested in subdomains of uci.edu?
+        if not parsed.netloc.endswith(".uci.edu"):
+            return False
+        
         return not re.match(
             r".*\.(css|js|bmp|gif|jpe?g|ico"
             + r"|png|tiff?|mid|mp2|mp3|mp4"
