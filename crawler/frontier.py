@@ -22,27 +22,31 @@ class Frontier(object):
             self.logger.info(
                 f"Found save file {self.config.save_file}, deleting it.")
             os.remove(self.config.save_file)
-        self.save = shelve.open(self.config.save_file)
-        if restart:
-            for url in self.config.seed_urls:
-                self.add_url(url)
-        else:
-            self._parse_save_file()
-            if not self.save:
-                for url in self.config.seed_urls:
-                    self.add_url(url)
-
-    def _parse_save_file(self):
-        total_count = len(self.save)
-        tbd_count = 0
+        
         with self.lock:
-            for url, completed in self.save.values():
-                if not completed and is_valid(url):
-                    self.to_be_downloaded.put(url)
-                    tbd_count += 1
-        self.logger.info(
-            f"Found {tbd_count} urls to be downloaded from {total_count} "
-            f"total urls discovered.")
+            save = shelve.open(self.config.save_file)
+            if restart:
+                for url in self.config.seed_urls:
+                    urlhash = get_urlhash(normalize(url))
+                    save[urlhash] = (normalize(url), False)
+                    self.to_be_downloaded.put(normalize(url))
+            else:
+                total_count = len(save)
+                tbd_count = 0
+                for url, completed in save.values():
+                    if not completed and is_valid(url):
+                        self.to_be_downloaded.put(url)
+                        tbd_count += 1
+                if tbd_count == 0 and total_count == 0:
+                    for url in self.config.seed_urls:
+                        urlhash = get_urlhash(normalize(url))
+                        save[urlhash] = (normalize(url), False)
+                        self.to_be_downloaded.put(normalize(url))
+                else:
+                    self.logger.info(
+                        f"Found {tbd_count} urls to be downloaded from {total_count} "
+                        f"total urls discovered.")
+            save.close()
 
     def get_tbd_url(self):
         try:
@@ -54,16 +58,22 @@ class Frontier(object):
         url = normalize(url)
         urlhash = get_urlhash(url)
         with self.lock:
-            if urlhash not in self.save:
-                self.save[urlhash] = (url, False)
-                self.save.sync()
+            save = shelve.open(self.config.save_file)
+            if urlhash not in save:
+                save[urlhash] = (url, False)
+                save.sync()
+                save.close()
                 self.to_be_downloaded.put(url)
+            else:
+                save.close()
     
     def mark_url_complete(self, url):
         urlhash = get_urlhash(url)
         with self.lock:
-            if urlhash not in self.save:
+            save = shelve.open(self.config.save_file)
+            if urlhash not in save:
                 self.logger.error(
                     f"Completed url {url}, but have not seen it before.")
-            self.save[urlhash] = (url, True)
-            self.save.sync()
+            save[urlhash] = (url, True)
+            save.sync()
+            save.close()
