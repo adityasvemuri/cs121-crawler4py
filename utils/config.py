@@ -13,7 +13,7 @@ class Config(object):
         self.host = config["CONNECTION"]["HOST"]
         self.port = int(config["CONNECTION"]["PORT"])
 
-        self.seed_urls = config["CRAWLER"]["SEEDURL"].split(",")
+        self.seed_urls = [url.strip() for url in config["CRAWLER"]["SEEDURL"].split(",") if url.strip()]
         self.time_delay = float(config["CRAWLER"]["POLITENESS"])
 
         self.cache_server = None
