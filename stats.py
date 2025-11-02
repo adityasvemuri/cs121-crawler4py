@@ -3,6 +3,17 @@ import re
 from urllib.parse import urlparse
 from collections import defaultdict
 
+STOP_WORDS = {
+    'a', 'an', 'and', 'are', 'as', 'at', 'be', 'been', 'by', 'for', 'from',
+    'has', 'he', 'in', 'is', 'it', 'its', 'of', 'on', 'that', 'the', 'to',
+    'was', 'were', 'will', 'with', 'the', 'this', 'but', 'they', 'have',
+    'had', 'what', 'said', 'each', 'which', 'their', 'if', 'up', 'out',
+    'many', 'then', 'them', 'these', 'so', 'some', 'her', 'would', 'make',
+    'like', 'into', 'him', 'has', 'two', 'more', 'go', 'no', 'way', 'could',
+    'my', 'than', 'first', 'been', 'call', 'who', 'oil', 'its', 'now',
+    'find', 'down', 'day', 'did', 'get', 'come', 'made', 'may', 'part'
+}
+
 def analyze_crawl_data(save_file='frontier.shelve', stats_file='crawl_stats.shelve'):
     print("Analyzing crawl data...")
     
@@ -31,9 +42,10 @@ def analyze_crawl_data(save_file='frontier.shelve', stats_file='crawl_stats.shel
         stats = shelve.open(stats_file)
         try:
             all_words = {}
-            for url, data in stats.items():
+            for urlhash, data in stats.items():
                 if isinstance(data, dict) and 'word_count' in data:
-                    page_word_counts[url] = data['word_count']
+                    url_key = data.get('url', urlhash)
+                    page_word_counts[url_key] = data['word_count']
                     if 'words' in data and isinstance(data['words'], dict):
                         for word, count in data['words'].items():
                             if word in all_words:
@@ -47,7 +59,10 @@ def analyze_crawl_data(save_file='frontier.shelve', stats_file='crawl_stats.shel
         print(f"Warning: Statistics file {stats_file} not found. Run the crawler first.")
         return
     
-    top_50 = sorted(word_counts.items(), key=lambda x: (-x[1], x[0]))[:50]
+    # Filter out stop words and words with 2 or fewer characters (only 3+ character words)
+    filtered_word_counts = {word: count for word, count in word_counts.items() 
+                           if word not in STOP_WORDS and len(word) > 2}
+    top_50 = sorted(filtered_word_counts.items(), key=lambda x: (-x[1], x[0]))[:50]
     
     longest_page_url = max(page_word_counts.items(), key=lambda x: x[1]) if page_word_counts else ("N/A", 0)
     

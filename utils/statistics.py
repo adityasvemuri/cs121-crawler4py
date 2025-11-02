@@ -6,6 +6,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'Assignment1'))
 from Assignment1 import PartA
+from utils import get_urlhash, normalize
 
 class TextExtractor(HTMLParser):
     def __init__(self):
@@ -57,9 +58,13 @@ class StatisticsCollector:
         
         total_word_count = sum(word_counts.values())
         
+        normalized_url = normalize(url)
+        urlhash = get_urlhash(normalized_url)
+        
         with self.lock:
             stats = shelve.open(self.stats_file)
-            stats[url] = {
+            stats[urlhash] = {
+                'url': normalized_url,
                 'word_count': total_word_count,
                 'words': word_counts
             }
