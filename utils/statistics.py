@@ -84,7 +84,7 @@ class StatisticsCollector:
                     stats.close()
                 break  # Success, exit retry loop
             except (dbm.error, OSError) as e:
-                # Handle concurrent access errors with retry
+                # Handle concurrent access errors with retryyyy
                 if attempt < max_retries - 1:
                     time.sleep(retry_delay * (attempt + 1))  # Exponential backoff
                     continue
