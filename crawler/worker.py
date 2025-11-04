@@ -1,4 +1,3 @@
-from threading import Thread, Lock
 from urllib.parse import urlparse
 
 from inspect import getsource
@@ -9,9 +8,8 @@ import scraper
 import time
 
 
-class Worker(Thread):
+class Worker:
     _domain_times = {}
-    _domain_lock = Lock()
     MIN_WORD_COUNT = 10 
     MAX_CONTENT_SIZE = 10 * 1024 * 1024  # 10MB max
 
@@ -22,7 +20,6 @@ class Worker(Thread):
         self.stats_collector = StatisticsCollector()
         assert {getsource(scraper).find(req) for req in {"from requests import", "import requests"}} == {-1}, "Do not use requests in scraper.py"
         assert {getsource(scraper).find(req) for req in {"from urllib.request import", "import urllib.request"}} == {-1}, "Do not use urllib.request in scraper.py"
-        super().__init__(daemon=True)
     
     def _is_dead_url(self, resp):
         """Detect dead URLs that return 200 but have no meaningful content."""
@@ -53,16 +50,15 @@ class Worker(Thread):
     def _wait_for_domain_politeness(self, url):
         parsed = urlparse(url)
         domain = parsed.netloc
-        with Worker._domain_lock:
-            current_time = time.time()
-            if domain in Worker._domain_times:
-                last_time = Worker._domain_times[domain]
-                elapsed = current_time - last_time
-                if elapsed < self.config.time_delay:
-                    sleep_time = self.config.time_delay - elapsed
-                    time.sleep(sleep_time)
-            Worker._domain_times[domain] = time.time()
-        
+        current_time = time.time()
+        if domain in Worker._domain_times:
+            last_time = Worker._domain_times[domain]
+            elapsed = current_time - last_time
+            if elapsed < self.config.time_delay:
+                sleep_time = self.config.time_delay - elapsed
+                time.sleep(sleep_time)
+        Worker._domain_times[domain] = time.time()
+    
     def run(self):
         consecutive_empty = 0
         max_consecutive_empty = 5

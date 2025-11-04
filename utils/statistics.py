@@ -1,6 +1,5 @@
 import shelve
 from html.parser import HTMLParser
-import threading
 import time
 import os
 import dbm
@@ -34,7 +33,6 @@ class TextExtractor(HTMLParser):
 class StatisticsCollector:
     def __init__(self, stats_file='crawl_stats.shelve'):
         self.stats_file = stats_file
-        self.lock = threading.RLock()
     
     def extract_text_from_html(self, html_content):
         parser = TextExtractor()
@@ -72,16 +70,15 @@ class StatisticsCollector:
         
         for attempt in range(max_retries):
             try:
-                with self.lock:
-                    # Use flag='c' to create if doesn't exist, open if exists
-                    stats = shelve.open(self.stats_file, flag='c')
-                    stats[urlhash] = {
-                        'url': normalized_url,
-                        'word_count': total_word_count,
-                        'words': word_counts
-                    }
-                    stats.sync()
-                    stats.close()
+                # Use flag='c' to create if doesn't exist, open if exists
+                stats = shelve.open(self.stats_file, flag='c')
+                stats[urlhash] = {
+                    'url': normalized_url,
+                    'word_count': total_word_count,
+                    'words': word_counts
+                }
+                stats.sync()
+                stats.close()
                 break  # Success, exit retry loop
             except (dbm.error, OSError) as e:
                 # Handle concurrent access errors with retryyyy
