@@ -100,22 +100,7 @@ class Worker(Thread):
             
             # Only process successful downloads
             if resp.status == 200:
-                # Extract text and check for near-duplicates using SimHash
                 if resp.raw_response and resp.raw_response.content:
-                    text = self.stats_collector.extract_text_from_html(resp.raw_response.content)
-                    page_simhash = self.stats_collector.compute_simhash(text)
-                    
-                    # Check if this page is a near-duplicate
-                    if self.stats_collector.is_near_duplicate(page_simhash):
-                        self.logger.warning(f"Near-duplicate page detected, skipping: {tbd_url}")
-                        self.frontier.mark_url_complete(tbd_url)
-                        time.sleep(self.config.time_delay)
-                        continue
-                    
-                    # Save stats with pre-computed simhash to avoid recomputation
-                    self.stats_collector.save_page_stats(tbd_url, resp, simhash=page_simhash)
-                else:
-                    # Fallback if no content
                     self.stats_collector.save_page_stats(tbd_url, resp)
                 scraped_urls = scraper.scraper(tbd_url, resp)
                 for scraped_url in scraped_urls:
